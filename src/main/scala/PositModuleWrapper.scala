@@ -35,9 +35,17 @@ class PositModuleWrapper(nbits: Int, es: Int) extends Module {
   io.completed := counter === maxCount.U
 
   private val incrementedCounter: UInt = counter + 1.U
-  counter := Mux(io.start, Mux(counter < maxCount.U, incrementedCounter, counter), 0.U)
+  counter := Mux(
+    io.start,
+    Mux(counter < maxCount.U, incrementedCounter, counter),
+    0.U
+  )
 
-  num1 := Mux(counter > 0.U && counter <= maxCount.U && io.start, positAdd.io.out, 0.U)
+  num1 := Mux(
+    counter > 0.U && counter <= maxCount.U && io.start,
+    positAdd.io.out,
+    0.U
+  )
   num2 := Mux(counter < (numbersToRead + 1).U && io.start, io.read_data, 0.U)
 
   io.address_to_read := io.starting_address + counter
@@ -48,9 +56,8 @@ class PositModuleWrapper(nbits: Int, es: Int) extends Module {
   io.result := positAdd.io.out
 }
 
-
 // object PositAddWrapper extends App {
 //   val optionsManager = new ExecutionOptionsManager("chisel3") with HasChiselExecutionOptions with HasFirrtlOptions
 //   optionsManager.setTargetDirName("_module_wrapper_output")
-//   Driver.execute(optionsManager, () => new PositModuleWrapper(8, 2))
+//   TesterDriver.execute(optionsManager, () => new PositModuleWrapper(8, 2))
 // }

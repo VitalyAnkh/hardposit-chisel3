@@ -1,9 +1,18 @@
-import chisel3.iotesters.{ChiselFlatSpec, PeekPokeTester}
+import org.scalatest.{Matchers, FlatSpec}
 import hardposit.PositMul
+import chisel3._
+import chisel3.util._
+import chisel3.iotesters._
 
 class PositMulSpec extends ChiselFlatSpec {
 
-  private class PositMulTest(c: PositMul, num1: Int, num2: Int, expectedPosit: Int, isNaR: Boolean) extends PeekPokeTester(c) {
+  private class PositMulTest(
+      c: PositMul,
+      num1: Int,
+      num2: Int,
+      expectedPosit: Int,
+      isNaR: Boolean
+  ) extends PeekPokeTester(c) {
     poke(c.io.num1, num1)
     poke(c.io.num2, num2)
     step(1)
@@ -11,23 +20,30 @@ class PositMulSpec extends ChiselFlatSpec {
     expect(c.io.out, expectedPosit)
   }
 
-  private def test(nbits: Int, es: Int, num1: Int, num2: Int, expectedPosit: Int, isNaR: Boolean = false): Boolean = {
-    chisel3.iotesters.Driver(() => new PositMul(nbits, es)) {
-      c => new PositMulTest(c, num1, num2, expectedPosit, isNaR)
+  private def test(
+      nbits: Int,
+      es: Int,
+      num1: Int,
+      num2: Int,
+      expectedPosit: Int,
+      isNaR: Boolean = false
+  ): Boolean = {
+    iotesters.Driver(() => new PositMul(nbits, es)) { c =>
+      new PositMulTest(c, num1, num2, expectedPosit, isNaR)
     }
   }
 
   it should "return multiplied value signs and exponent signs are positive" in {
-    assert(test(16, 1, 0x5A00, 0x6200, 0x7010))
+    assert(test(16, 1, 0x5a00, 0x6200, 0x7010))
   }
 
   it should "return multiplied value when signs are different" in {
-    assert(test(16, 1, 0xA600, 0x6200, 0x8FF0))
-    assert(test(16, 1, 0x6200, 0xA600, 0x8FF0))
+    assert(test(16, 1, 0xa600, 0x6200, 0x8ff0))
+    assert(test(16, 1, 0x6200, 0xa600, 0x8ff0))
   }
 
   it should "return the zero when one of the number is zero" in {
-    assert(test(8, 0, 0x6F, 0x00, 0x00))
+    assert(test(8, 0, 0x6f, 0x00, 0x00))
     assert(test(8, 0, 0x00, 0x32, 0x00))
   }
 
@@ -42,7 +58,7 @@ class PositMulSpec extends ChiselFlatSpec {
   }
 
   it should "return the positive number when there are two negative numbers multiplied" in {
-    assert(test(16, 1, 0xA600, 0x9E00, 0x7010))
+    assert(test(16, 1, 0xa600, 0x9e00, 0x7010))
   }
 
   it should "return the correct multiplication when of the number has smallest exponent" in {

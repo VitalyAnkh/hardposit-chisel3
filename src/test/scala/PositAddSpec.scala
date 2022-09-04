@@ -1,9 +1,18 @@
-import chisel3.iotesters.{ChiselFlatSpec, PeekPokeTester}
 import hardposit.PositAdd
+import chisel3._
+import chisel3.util._
+import chisel3.iotesters._
+import org.scalatest.{Matchers, FlatSpec}
+class PositAddSpec extends FlatSpec {
 
-class PositAddSpec extends ChiselFlatSpec {
-
-  private class PositAddTest(c: PositAdd, num1: Int, num2: Int, expectedPosit: Int, sub: Boolean, isNaR: Boolean) extends PeekPokeTester(c) {
+  private class PositAddTest(
+      c: PositAdd,
+      num1: Int,
+      num2: Int,
+      expectedPosit: Int,
+      sub: Boolean,
+      isNaR: Boolean
+  ) extends PeekPokeTester(c) {
     poke(c.io.num1, num1)
     poke(c.io.num2, num2)
     poke(c.io.sub, sub)
@@ -12,60 +21,68 @@ class PositAddSpec extends ChiselFlatSpec {
     expect(c.io.isNaR, isNaR)
   }
 
-  private def test(nbits: Int, es: Int, num1: Int, num2: Int, expectedPosit: Int, sub: Boolean = false, isNaR: Boolean = false): Boolean = {
-    chisel3.iotesters.Driver(() => new PositAdd(nbits, es)) {
-      c => new PositAddTest(c, num1, num2, expectedPosit, sub, isNaR)
+  private def test(
+      nbits: Int,
+      es: Int,
+      num1: Int,
+      num2: Int,
+      expectedPosit: Int,
+      sub: Boolean = false,
+      isNaR: Boolean = false
+  ): Boolean = {
+    iotesters.Driver(() => new PositAdd(nbits, es)) { c =>
+      new PositAddTest(c, num1, num2, expectedPosit, sub, isNaR)
     }
   }
 
   it should "return added value when both exponent and signs are equal" in {
-    assert(test(8, 0, 0x6C, 0x62, 0x74))
+    assert(test(8, 0, 0x6c, 0x62, 0x74))
   }
 
   it should "return added value when both exponent and signs are equal1" in {
-    assert(test(8, 0, 0x6D, 0x6A, 0x76))
+    assert(test(8, 0, 0x6d, 0x6a, 0x76))
   }
 
   it should "return added value when both exponent and signs are equal2" in {
-    assert(test(8, 1, 0x5D, 0x5B, 0x66))
+    assert(test(8, 1, 0x5d, 0x5b, 0x66))
   }
 
   it should "return added value when both exponents are not equal but sign is positive" in {
-    assert(test(16, 1, 0x6D00, 0x5B00, 0x7018))
+    assert(test(16, 1, 0x6d00, 0x5b00, 0x7018))
   }
 
   it should "return added value when both exponent and signs are equal3" in {
-    assert(test(8, 0, 0x94, 0x9E, 0x8C))
+    assert(test(8, 0, 0x94, 0x9e, 0x8c))
   }
 
   it should "return the subtracted value when first one is lesser and positive" in {
-    assert(test(8, 1, 0x42, 0xAC, 0xBA))
+    assert(test(8, 1, 0x42, 0xac, 0xba))
   }
 
   it should "return the subtracted value when first one is greater and positive" in {
-    assert(test(8, 1, 0x54, 0xBE, 0x46))
+    assert(test(8, 1, 0x54, 0xbe, 0x46))
   }
 
   it should "return the zero when both values are equal and different signs" in {
-    assert(test(8, 0, 0x9D, 0x63, 0x00))
-    assert(test(8, 1, 0x9D, 0x63, 0x00))
-    assert(test(8, 2, 0x9D, 0x63, 0x00))
+    assert(test(8, 0, 0x9d, 0x63, 0x00))
+    assert(test(8, 1, 0x9d, 0x63, 0x00))
+    assert(test(8, 2, 0x9d, 0x63, 0x00))
   }
 
   it should "return the subtracted value when first one is greater and positive1" in {
-    assert(test(16, 2, 0x64AF, 0xAF44, 0x6423))
+    assert(test(16, 2, 0x64af, 0xaf44, 0x6423))
   }
 
   it should "return the subtracted value when first one is lesser and negative1" in {
-    assert(test(16, 2, 0xAF44, 0x64AF, 0x6423))
+    assert(test(16, 2, 0xaf44, 0x64af, 0x6423))
   }
 
   it should "return the subtracted value when first one is greater and negative" in {
-    assert(test(16, 2, 0x9B51, 0x50BC, 0x9BDD))
+    assert(test(16, 2, 0x9b51, 0x50bc, 0x9bdd))
   }
 
   it should "return the maxpos when the exponent are at max" in {
-    assert(test(8, 0, 0x7F, 0x7F, 0x7F))
+    assert(test(8, 0, 0x7f, 0x7f, 0x7f))
   }
 
   it should "return the other number when one of it is zero" in {
@@ -95,7 +112,7 @@ class PositAddSpec extends ChiselFlatSpec {
     assert(test(8, 0, 120, 86, 121))
     assert(test(8, 0, 120, 88, 121))
     assert(test(8, 0, 120, 89, 121))
-    assert(test(8, 0, 120, 0xA6, 116))
+    assert(test(8, 0, 120, 0xa6, 116))
   }
 
   it should "for 100MHZ checking in fpga 8 * 2" in {
@@ -107,19 +124,19 @@ class PositAddSpec extends ChiselFlatSpec {
     assert(test(8, 2, 97, 86, 99))
     assert(test(8, 2, 98, 88, 100))
     assert(test(8, 2, 100, 89, 101))
-    assert(test(8, 2, 0xA6, 101, 100))
+    assert(test(8, 2, 0xa6, 101, 100))
   }
 
   it should "for 100MHZ checking in 16*1" in {
     assert(test(16, 1, 0x4000, 0x5000, 0x5800))
     assert(test(16, 1, 0x5800, 0x5800, 0x6400))
-    assert(test(16, 1, 0x6400, 0x6000, 0x6A00))
-    assert(test(16, 1, 0x6A00, 0x6200, 0x6F00))
-    assert(test(16, 1, 0x6F00, 0x6400, 0x7140))
+    assert(test(16, 1, 0x6400, 0x6000, 0x6a00))
+    assert(test(16, 1, 0x6a00, 0x6200, 0x6f00))
+    assert(test(16, 1, 0x6f00, 0x6400, 0x7140))
     assert(test(16, 1, 0x7140, 0x6600, 0x7300))
     assert(test(16, 1, 0x7300, 0x6800, 0x7480))
-    assert(test(16, 1, 0x7480, 0x6900, 0x75A0))
-    assert(test(16, 1, 0x75A0, 0x9600, 0x7460))
+    assert(test(16, 1, 0x7480, 0x6900, 0x75a0))
+    assert(test(16, 1, 0x75a0, 0x9600, 0x7460))
   }
 
   it should "return zero for the same posit numbers" in {
@@ -140,20 +157,20 @@ class PositAddSpec extends ChiselFlatSpec {
   }
 
   it should "return the negative of second number when the first number is zero" in {
-    assert(test(8, 3, 0, 0x45, 0xBB, sub = true))
+    assert(test(8, 3, 0, 0x45, 0xbb, sub = true))
   }
 
   it should "return the addition when both are having different signs" in {
-    assert(test(8, 1, 0x5D, 0xA5, 0x66, sub = true))
+    assert(test(8, 1, 0x5d, 0xa5, 0x66, sub = true))
   }
 
   it should "return the positive number when both are of same sign and first number is larger" in {
     assert(test(8, 1, 0x54, 0x42, 0x46, sub = true))
-    assert(test(8, 1, 0xBE, 0xAC, 0x46, sub = true))
+    assert(test(8, 1, 0xbe, 0xac, 0x46, sub = true))
   }
 
   it should "return the negative number when both are of same sign and second number is larger" in {
-    assert(test(8, 1, 0x42, 0x54, 0xBA, sub = true))
-    assert(test(8, 1, 0xAC, 0xBE, 0xBA, sub = true))
+    assert(test(8, 1, 0x42, 0x54, 0xba, sub = true))
+    assert(test(8, 1, 0xac, 0xbe, 0xba, sub = true))
   }
 }

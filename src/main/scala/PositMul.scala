@@ -2,15 +2,17 @@ package hardposit
 
 import chisel3._
 
-class PositMulCore(val nbits: Int, val es: Int) extends Module with HasHardPositParams {
+class PositMulCore(val nbits: Int, val es: Int)
+    extends Module
+    with HasHardPositParams {
 
-  val io = IO(new Bundle{
-    val num1   = Input(new unpackedPosit(nbits, es))
-    val num2   = Input(new unpackedPosit(nbits, es))
+  val io = IO(new Bundle {
+    val num1 = Input(new UnpackedPosit(nbits, es))
+    val num2 = Input(new UnpackedPosit(nbits, es))
 
     val trailingBits = Output(UInt(trailingBitCount.W))
     val stickyBit = Output(Bool())
-    val out    = Output(new unpackedPosit(nbits, es))
+    val out = Output(new UnpackedPosit(nbits, es))
   })
 
   val num1 = io.num1
@@ -22,22 +24,33 @@ class PositMulCore(val nbits: Int, val es: Int) extends Module with HasHardPosit
   val prodOverflow = prodFrac(maxMultiplierFractionBits - 1)
 
   val normProductFrac = (prodFrac << (~prodOverflow).asUInt()).asUInt()
-  val normProductExp  = prodExp + Mux(prodOverflow, 1.S, 0.S)
+  val normProductExp = prodExp + Mux(prodOverflow, 1.S, 0.S)
 
-  val result = Wire(new unpackedPosit(nbits, es))
-  result.isNaR    := num1.isNaR  | num2.isNaR
-  result.isZero   := num1.isZero | num2.isZero
-  result.sign     := num1.sign ^ num2.sign
+  val result = Wire(new UnpackedPosit(nbits, es))
+  result.isNaR := num1.isNaR | num2.isNaR
+  result.isZero := num1.isZero | num2.isZero
+  result.sign := num1.sign ^ num2.sign
   result.exponent := normProductExp
-  result.fraction := normProductFrac(maxMultiplierFractionBits - 1, maxMultiplierFractionBits - maxFractionBitsWithHiddenBit)
+  result.fraction := normProductFrac(
+    maxMultiplierFractionBits - 1,
+    maxMultiplierFractionBits - maxFractionBitsWithHiddenBit
+  )
 
-  io.trailingBits := normProductFrac(maxMultiplierFractionBits - maxFractionBitsWithHiddenBit - 1, maxFractionBitsWithHiddenBit - trailingBitCount)
-  io.stickyBit    := normProductFrac(maxFractionBitsWithHiddenBit - trailingBitCount - 1, 0).orR()
+  io.trailingBits := normProductFrac(
+    maxMultiplierFractionBits - maxFractionBitsWithHiddenBit - 1,
+    maxFractionBitsWithHiddenBit - trailingBitCount
+  )
+  io.stickyBit := normProductFrac(
+    maxFractionBitsWithHiddenBit - trailingBitCount - 1,
+    0
+  ).orR()
 
   io.out := result
 }
 
-class PositMul(val nbits: Int, val es: Int) extends Module with HasHardPositParams {
+class PositMul(val nbits: Int, val es: Int)
+    extends Module
+    with HasHardPositParams {
 
   val io = IO(new Bundle {
     val num1 = Input(UInt(nbits.W))
@@ -59,11 +72,11 @@ class PositMul(val nbits: Int, val es: Int) extends Module with HasHardPositPara
   positMulCore.io.num2 := num2Extractor.io.out
 
   val positGenerator = Module(new PositGenerator(nbits, es))
-  positGenerator.io.in           := positMulCore.io.out
+  positGenerator.io.in := positMulCore.io.out
   positGenerator.io.trailingBits := positMulCore.io.trailingBits
-  positGenerator.io.stickyBit    := positMulCore.io.stickyBit
+  positGenerator.io.stickyBit := positMulCore.io.stickyBit
 
   io.isZero := positMulCore.io.out.isZero | isZero(positGenerator.io.out)
-  io.isNaR  := positMulCore.io.out.isNaR  | isNaR(positGenerator.io.out)
-  io.out    := positGenerator.io.out
+  io.isNaR := positMulCore.io.out.isNaR | isNaR(positGenerator.io.out)
+  io.out := positGenerator.io.out
 }

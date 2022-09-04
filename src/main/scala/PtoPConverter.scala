@@ -3,21 +3,26 @@ package hardposit
 import chisel3._
 import chisel3.util.Cat
 
-class PtoPConverterCore(inWidth: Int, inEs: Int, outWidth: Int, outEs: Int) extends Module with HasHardPositParams {
+class PtoPConverterCore(inWidth: Int, inEs: Int, outWidth: Int, outEs: Int)
+    extends Module
+    with HasHardPositParams {
   lazy val nbits: Int = inWidth
   lazy val es: Int = inEs
-  require((inWidth != outWidth) | (inEs != outEs), "Conversion between identical posit configuration")
+  require(
+    (inWidth != outWidth) | (inEs != outEs),
+    "Conversion between identical posit configuration"
+  )
 
   val io = IO(new Bundle {
-    val in = Input(new unpackedPosit(inWidth, inEs))
+    val in = Input(new UnpackedPosit(inWidth, inEs))
 
     val trailingBits = Output(UInt(trailingBitCount.W))
-    val stickyBit    = Output(Bool())
-    val out          = Output(new unpackedPosit(outWidth, outEs))
+    val stickyBit = Output(Bool())
+    val out = Output(new UnpackedPosit(outWidth, outEs))
   })
 
-  val maxInExponentBits  = getMaxExponentBits(inWidth, inEs)
-  val maxInFractionBits  = getMaxFractionBits(inWidth, inEs)
+  val maxInExponentBits = getMaxExponentBits(inWidth, inEs)
+  val maxInFractionBits = getMaxFractionBits(inWidth, inEs)
 
   val maxOutExponentBits = getMaxExponentBits(outWidth, outEs)
   val maxOutFractionBits = getMaxFractionBits(outWidth, outEs)
@@ -33,34 +38,49 @@ class PtoPConverterCore(inWidth: Int, inEs: Int, outWidth: Int, outEs: Int) exte
     if (narrowConv)
       io.in.fraction(maxInFractionBits, maxInFractionBits - maxOutFractionBits)
     else
-      Cat(io.in.fraction(maxInFractionBits, 0), 0.U((maxOutFractionBits - maxInFractionBits).W))(maxOutFractionBits, 0)
+      Cat(
+        io.in.fraction(maxInFractionBits, 0),
+        0.U((maxOutFractionBits - maxInFractionBits).W)
+      )(maxOutFractionBits, 0)
   }
 
   io.out.exponent := {
     if (maxInExponentBits > maxOutExponentBits)
-      Mux(io.in.exponent < minOutExp, minOutExp,
-        Mux(io.in.exponent > maxOutExp, maxOutExp, io.in.exponent))
+      Mux(
+        io.in.exponent < minOutExp,
+        minOutExp,
+        Mux(io.in.exponent > maxOutExp, maxOutExp, io.in.exponent)
+      )
     else io.in.exponent
   }
 
-  val inFracWithTrailOffset = Cat(io.in.fraction, 0.U((trailingBitCount + stickyBitCount).W))
+  val inFracWithTrailOffset =
+    Cat(io.in.fraction, 0.U((trailingBitCount + stickyBitCount).W))
 
   io.trailingBits := {
-    if(narrowConv)
-      inFracWithTrailOffset(maxInFractionBits - maxOutFractionBits + trailingBitCount + stickyBitCount - 1,
-        maxInFractionBits - maxOutFractionBits + stickyBitCount )
-    else 0.U }
+    if (narrowConv)
+      inFracWithTrailOffset(
+        maxInFractionBits - maxOutFractionBits + trailingBitCount + stickyBitCount - 1,
+        maxInFractionBits - maxOutFractionBits + stickyBitCount
+      )
+    else 0.U
+  }
 
   io.stickyBit := {
     if (narrowConv)
-      inFracWithTrailOffset(maxInFractionBits - maxOutFractionBits + stickyBitCount - 1, 0).orR()
-    else false.B }
+      inFracWithTrailOffset(
+        maxInFractionBits - maxOutFractionBits + stickyBitCount - 1,
+        0
+      ).orR()
+    else false.B
+  }
 }
 
-class PtoPConverter(inWidth: Int, inEs: Int, outWidth: Int, outEs: Int) extends Module{
+class PtoPConverter(inWidth: Int, inEs: Int, outWidth: Int, outEs: Int)
+    extends Module {
 
   val io = IO(new Bundle {
-    val in  = Input(UInt(inWidth.W))
+    val in = Input(UInt(inWidth.W))
     val out = Output(UInt(outWidth.W))
   })
   val p2pCore = Module(new PtoPConverterCore(inWidth, inEs, outWidth, outEs))
@@ -69,11 +89,11 @@ class PtoPConverter(inWidth: Int, inEs: Int, outWidth: Int, outEs: Int) extends 
   val generator = Module(new PositGenerator(outWidth, outEs))
 
   extractor.io.in := io.in
-  p2pCore.io.in   := extractor.io.out
+  p2pCore.io.in := extractor.io.out
 
-  generator.io.in           := p2pCore.io.out
+  generator.io.in := p2pCore.io.out
   generator.io.trailingBits := p2pCore.io.trailingBits
-  generator.io.stickyBit    := p2pCore.io.stickyBit
+  generator.io.stickyBit := p2pCore.io.stickyBit
 
   io.out := generator.io.out
 }
